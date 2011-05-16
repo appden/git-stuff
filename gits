@@ -1,0 +1,22 @@
+#!/bin/sh
+#
+# This simple script will stash changes in git while running a command.
+#
+# If you use bash tab completion add this line to your ~/.bash_profile:
+# complete -o default -o nospace -F _git gits
+#
+# Bonus for those of you using GitX:
+# complete -o default -o nospace -F _gitk gitx
+#
+# by Scott Kyle (appden)
+
+if git diff --ignore-submodules=all --no-ext-diff --quiet --exit-code HEAD; then
+	# if the work tree and index are clean just run the command
+	git $@
+else
+	# otherwise stash, run the command, then pop the stash
+	git stash && git $@ && git stash pop
+fi
+
+# exit with the last command's exit code
+exit $?

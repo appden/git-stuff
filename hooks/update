@@ -1,0 +1,44 @@
+#!/bin/bash
+#
+# This git update hook will refuse unnecessary merge commits caused by pulling
+# from being pushed to a shared repository. These commits make following the
+# history of a project difficult and are always avoidable with rebasing.
+#
+# by Scott Kyle (appden)
+
+refname="$1"
+oldrev="$2"
+newrev="$3"
+
+# if this is not run as a hook, you may have messed up
+if [ -z "$GIT_DIR" -o -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
+	echo "Usage: GIT_DIR=<path> $0 <ref> <oldrev> <newrev>" >&2
+	exit 1
+fi
+
+# if the new revision is all 0's then it's a commit to delete a ref
+zero="0000000000000000000000000000000000000000"
+# also check if the new revision is not a commit or is not a fast forward
+if [ "$newrev" = "$zero" ] || [ $(git cat-file -t $newrev) != "commit" ] || [ $(git merge-base $oldrev $newrev) != "$oldrev" ]; then
+	exit 0
+fi
+
+# loop through merges in the push only following first parents
+for merge in $(git rev-list --first-parent --merges $oldrev..$newrev); do
+	# lazily create the revision list of this branch prior to the push
+	[ -z "$revlist" ] && revlist=$(git rev-list $oldrev)
+	# check if the second parent of the merge is already in this branch
+	if grep -q $(git rev-parse $merge^2) <<< "$revlist"; then
+		cat >&2 <<-EOF
+			*** Push to ${refname#refs/heads/} rejected because of merge commit caused by pulling
+			*** To fix: git pull --rebase
+			***
+			*** Permanent fix: git config [--global] branch.autosetuprebase always
+			*** Then for existing branches: git config branch.<name>.rebase true
+		EOF
+		exit 1
+	fi
+done
+
+# clean history successfully preserved!
+exit 0
