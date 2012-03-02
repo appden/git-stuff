@@ -16,10 +16,11 @@ if [ -z "$GIT_DIR" -o -z "$refname" -o -z "$oldrev" -o -z "$newrev" ]; then
 	exit 1
 fi
 
-# if the new revision is all 0's then it's a commit to delete a ref
 zero="0000000000000000000000000000000000000000"
-# also check if the new revision is not a commit or is not a fast forward
-if [ "$newrev" = "$zero" ] || [ $(git cat-file -t $newrev) != "commit" ] || [ $(git merge-base $oldrev $newrev) != "$oldrev" ]; then
+if [ "$oldrev" = "$zero" ] || # new branch
+   [ "$newrev" = "$zero" ] || # delete branch
+   [ $(git cat-file -t $newrev) != "commit" ] || # not a commit
+   [ $(git merge-base $oldrev $newrev) != "$oldrev" ]; then # not a fast forward
 	exit 0
 fi
 
